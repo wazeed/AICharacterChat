@@ -1,30 +1,180 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Image,
-  TextInput,
-  FlatList,
   Dimensions,
-  SafeAreaView,
-  StatusBar,
   RefreshControl,
+  Animated,
+  StatusBar,
+  SafeAreaView,
+  ImageBackground,
+  Alert,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
+
+const { width, height } = Dimensions.get('window');
 
 // Mock character categories
 const CATEGORIES = [
-  { id: 'for_you', name: 'For You' },
-  { id: 'multi_role', name: 'Multi-Role' },
-  { id: 'oc', name: 'OC' },
-  { id: 'anime', name: 'Anime' },
-  { id: 'movies', name: 'Movies&TV' },
+  { id: 'all', name: 'All Characters' },
+  { id: 'fantasy', name: 'Fantasy' },
+  { id: 'historical', name: 'Historical' },
+  { id: 'sci-fi', name: 'Sci-Fi' },
+  { id: 'literature', name: 'Literature' },
+  { id: 'philosophy', name: 'Philosophy' },
+  { id: 'science', name: 'Science' },
 ];
 
-// Mock character data with placeholder background colors
+// Mock characters data
+const CHARACTERS = [
+  { id: 1, name: 'Gandalf', avatar: null, category: 'fantasy', description: 'A wise wizard with powerful magic and timeless wisdom' },
+  { id: 2, name: 'Marie Curie', avatar: null, category: 'historical', description: 'Nobel Prize winner and pioneer in the field of radioactivity' },
+  { id: 3, name: 'Captain Picard', avatar: null, category: 'sci-fi', description: 'Starfleet captain known for diplomacy and leadership' },
+  { id: 4, name: 'Sherlock Holmes', avatar: null, category: 'literature', description: "The world's greatest detective with exceptional deductive skills" },
+  { id: 5, name: 'Socrates', avatar: null, category: 'philosophy', description: 'Ancient Greek philosopher and the founder of Western philosophy' },
+  { id: 6, name: 'Albert Einstein', avatar: null, category: 'science', description: 'Theoretical physicist who developed the theory of relativity' },
+  { id: 7, name: 'Elizabeth Bennet', avatar: null, category: 'literature', description: 'The spirited and intelligent protagonist from Pride and Prejudice' },
+  { id: 8, name: 'Nikola Tesla', avatar: null, category: 'science', description: 'Inventor and electrical engineer who contributed to AC electricity' },
+  { id: 9, name: 'Frodo Baggins', avatar: null, category: 'fantasy', description: 'The brave hobbit who carried the One Ring to Mount Doom' },
+  { id: 10, name: 'Ada Lovelace', avatar: null, category: 'historical', description: 'Mathematician and writer, known as the first computer programmer' },
+  { id: 11, name: 'Data', avatar: null, category: 'sci-fi', description: 'Android officer from Star Trek with a desire to understand humanity' },
+  { id: 12, name: 'Aristotle', avatar: null, category: 'philosophy', description: 'Greek philosopher who contributed to logic, ethics, and metaphysics' },
+];
+
+// Creates a starry background effect
+const StarryBackground = ({ count = 50 }) => {
+  const stars = [];
+  
+  for (let i = 0; i < count; i++) {
+    const size = Math.random() * 2 + 1;
+    const opacity = useRef(new Animated.Value(Math.random() * 0.6 + 0.2)).current;
+    
+    useEffect(() => {
+      const randomDuration = 1500 + Math.random() * 3000;
+      
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(opacity, {
+            toValue: Math.random() * 0.8 + 0.1,
+            duration: randomDuration,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: Math.random() * 0.4 + 0.1,
+            duration: randomDuration,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      animation.start();
+      
+      return () => animation.stop();
+    }, []);
+    
+    stars.push(
+      <Animated.View
+        key={i}
+        style={{
+          position: 'absolute',
+          width: size,
+          height: size,
+          backgroundColor: '#fff',
+          borderRadius: size / 2,
+          top: Math.random() * height,
+          left: Math.random() * width,
+          opacity,
+        }}
+      />
+    );
+  }
+  
+  return <View style={{ position: 'absolute', width, height }}>{stars}</View>;
+};
+
+// Character Item with animations
+const CharacterItem = ({ item, index, onPress, theme }) => {
+  // Animation values
+  const translateY = useRef(new Animated.Value(20)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 500,
+        delay: index * 70, // Staggered animation
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 500,
+        delay: index * 70,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+  
+  return (
+    <Animated.View
+      style={[
+        styles.characterItemContainer,
+        {
+          opacity,
+          transform: [{ translateY }],
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.characterItem}
+        onPress={() => onPress(item)}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.characterGradient}
+        >
+          <View
+            style={[
+              styles.characterAvatar,
+              { backgroundColor: getCharacterBackgroundColor(item.id, theme) }
+            ]}
+          >
+            <Text style={styles.characterAvatarText}>{item.name.charAt(0)}</Text>
+          </View>
+          
+          <View style={styles.characterContent}>
+            <Text style={styles.characterName}>{item.name}</Text>
+            <Text style={styles.characterCategory}>{getCategoryName(item.category)}</Text>
+            <Text 
+              style={styles.characterDescription}
+              numberOfLines={2}
+            >
+              {item.description}
+            </Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// Helper function to get category name
+const getCategoryName = (categoryId) => {
+  const category = CATEGORIES.find(cat => cat.id === categoryId);
+  return category ? category.name : 'Unknown';
+};
+
+// Helper function to get character background color
 const getCharacterBackgroundColor = (id, theme) => {
   const colors = [
     theme.primary,
@@ -36,276 +186,292 @@ const getCharacterBackgroundColor = (id, theme) => {
   return colors[id % colors.length];
 };
 
-// Mock character data
-const CHARACTERS = [
-  { 
-    id: 1, 
-    name: 'Paulo', 
-    description: '/Can I play ball with the mlk...',
-    category: 'multi_role',
-    stats: '3.5M',
-    tags: ['Text Game', 'Loyal', 'Gentle', 'Jealous', 'Naughty'],
-    image: null
-  },
-  { 
-    id: 2, 
-    name: 'Nishimura Riki', 
-    description: 'Riki |forced marriage for our dad\'s companies 💮',
-    category: 'anime',
-    stats: '1.9M',
-    tags: ['Elegant', 'Movies&TV', 'Romance'],
-    image: null
-  },
-  { 
-    id: 3, 
-    name: 'biker boy', 
-    description: 'He is very selfish but kinda sweet.',
-    category: 'oc',
-    stats: '16.3M',
-    tags: ['OC', 'Student', 'Cold', 'Gentle', 'Badboy'],
-    image: null
-  },
-  { 
-    id: 4, 
-    name: 'Charlotte', 
-    description: 'Your cousin who is over for the weekend',
-    category: 'for_you',
-    stats: '6.7M',
-    tags: ['Student', 'Friendly', 'Family'],
-    image: null
-  },
-  { 
-    id: 5, 
-    name: 'Geralt of Rivia', 
-    description: 'The Witcher, monster hunter',
-    category: 'multi_role',
-    stats: '8.2M',
-    tags: ['Fantasy', 'Serious', 'Adventurous'],
-    image: null
-  },
-  { 
-    id: 6, 
-    name: 'Sherlock Holmes', 
-    description: 'The world\'s greatest detective',
-    category: 'movies',
-    stats: '4.5M',
-    tags: ['Movies&TV', 'Detective', 'Genius'],
-    image: null
-  },
-  { 
-    id: 7, 
-    name: 'Hinata Hyuga', 
-    description: 'Shy kunoichi from the Hidden Leaf',
-    category: 'anime',
-    stats: '3.8M',
-    tags: ['Anime', 'Shy', 'Sweet'],
-    image: null
-  },
-  { 
-    id: 8, 
-    name: 'Captain America', 
-    description: 'Super soldier with unwavering morals',
-    category: 'movies',
-    stats: '7.1M',
-    tags: ['Movies&TV', 'Hero', 'Brave'],
-    image: null
-  },
-];
-
-const { width } = Dimensions.get('window');
-const itemWidth = (width - 40) / 2;
-
-const ExploreScreen = ({ navigation, route }) => {
-  const { theme } = useTheme();
+const ExploreScreen = ({ navigation }) => {
+  const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('for_you');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
-
+  
+  // Animation values
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const headerTranslateY = useRef(new Animated.Value(-20)).current;
+  const categoriesOpacity = useRef(new Animated.Value(0)).current;
+  const searchBarTranslateX = useRef(new Animated.Value(-20)).current;
+  
+  useEffect(() => {
+    // Start animations
+    Animated.stagger(150, [
+      Animated.parallel([
+        Animated.timing(headerOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerTranslateY, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(searchBarTranslateX, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(categoriesOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+  
   const onRefresh = () => {
     setRefreshing(true);
-    // Simulate a refresh with a timeout
+    // Simulate refresh
     setTimeout(() => {
       setRefreshing(false);
     }, 1500);
   };
+  
+  // Filter characters based on selected category and search query
+  const filterCharacters = () => {
+    let filtered = CHARACTERS;
+    
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(character => character.category === selectedCategory);
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(character => 
+        character.name.toLowerCase().includes(query) || 
+        character.description.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  };
+  
+  const handleCharacterPress = (character) => {
+    // Navigate to character detail screen
+    // If the CharacterDetail screen is not fully implemented yet, show an alert
+    if (navigation.getState().routeNames.includes('CharacterDetail')) {
+      navigation.navigate('CharacterDetail', { character });
+    } else {
+      startChat(character);
+    }
+  };
+  
+  const startChat = (character) => {
+    // If CharacterDetail is not available, we can directly navigate to chat
+    Alert.alert(
+      `Chat with ${character.name}`,
+      `Would you like to start a conversation with ${character.name}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Start Chat',
+          onPress: () => {
+            navigation.navigate('ChatDetail', { 
+              chatId: character.id,
+              characterName: character.name
+            });
+          }
+        }
+      ]
+    );
+  };
 
-  // Filter characters based on search query and selected category
-  const filteredCharacters = CHARACTERS.filter(character => {
-    const matchesSearch = !searchQuery || 
-                          character.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          character.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'for_you' || character.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const renderCharacterItem = ({ item }) => (
-    <TouchableOpacity 
-      style={[styles.characterCard, { backgroundColor: theme.card }]}
-      onPress={() => navigation.navigate('ChatDetail', { characterId: item.id })}
-    >
-      <View style={styles.characterImageContainer}>
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.characterImage} />
-        ) : (
-          <View style={[
-            styles.placeholderImage, 
-            { backgroundColor: getCharacterBackgroundColor(item.id, theme) }
-          ]}>
-            <Text style={[styles.characterInitial, { color: theme.actionButtonText }]}>
-              {item.name[0]}
-            </Text>
-          </View>
-        )}
-        <View style={[styles.characterStatsContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-          <FontAwesome name="comment" size={14} color={theme.actionButtonText} />
-          <Text style={[styles.characterStats, { color: theme.actionButtonText }]}>{item.stats}</Text>
-        </View>
-      </View>
+  const filteredCharacters = filterCharacters();
+  
+  // Render empty state when no characters match the filter
+  const renderEmptyState = () => (
+    <View style={styles.emptyStateContainer}>
+      <FontAwesome 
+        name="search" 
+        size={50} 
+        color="rgba(255, 255, 255, 0.3)" 
+      />
+      <Text style={styles.emptyStateTitle}>No characters found</Text>
+      <Text style={styles.emptyStateText}>
+        Try adjusting your search or selecting a different category
+      </Text>
       
-      <View style={styles.characterInfo}>
-        <Text style={[styles.characterName, { color: theme.text }]}>{item.name}</Text>
-        <Text style={[styles.characterDescription, { color: theme.textSecondary }]} numberOfLines={2}>
-          {item.description}
-        </Text>
-        
-        <View style={styles.tagsContainer}>
-          {item.tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={[styles.tagChip, { backgroundColor: theme.secondary }]}>
-              <Text style={[styles.tagText, { color: theme.text }]}>{tag}</Text>
-            </View>
-          ))}
-          {item.tags.length > 3 && (
-            <View style={styles.moreTagsContainer}>
-              <Text style={[styles.moreTagsText, { color: theme.textSecondary }]}>+{item.tags.length - 3}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // Render header component for the FlatList
-  const renderHeader = () => (
-    <>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          Homepage
-        </Text>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <TextInput
-          style={[styles.searchInput, { 
-            color: theme.text,
-            backgroundColor: theme.inputBackground,
-            borderRadius: 10,
-            paddingHorizontal: 15
-          }]}
-          placeholder="Search"
-          placeholderTextColor={theme.textSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        <TouchableOpacity 
-          style={[styles.searchIconContainer, { backgroundColor: theme.secondary }]}
-          onPress={() => {/* Open search modal */}}
+      <TouchableOpacity
+        style={styles.resetButton}
+        onPress={() => {
+          setSearchQuery('');
+          setSelectedCategory('all');
+        }}
+      >
+        <LinearGradient
+          colors={[theme.primary, theme.accent]}
+          style={styles.resetButtonGradient}
         >
-          <FontAwesome name="search" size={22} color={theme.text} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Categories */}
-      <View style={[styles.categoriesContainer, {
-        borderColor: theme.border,
-        backgroundColor: theme.isDark ? theme.card : 'transparent'
-      }]}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={CATEGORIES}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.categoriesContent}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.categoryTab,
-                {
-                  backgroundColor: selectedCategory === item.id 
-                    ? theme.primary 
-                    : theme.isDark ? theme.secondary : '#f0f0f0',
-                  borderWidth: theme.isDark ? 1 : 0,
-                  borderColor: theme.border
-                },
-                selectedCategory === item.id && styles.categoryTabSelected
-              ]}
-              onPress={() => setSelectedCategory(item.id)}
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  {
-                    color: selectedCategory === item.id 
-                      ? theme.actionButtonText 
-                      : theme.text
-                  },
-                  selectedCategory === item.id && styles.categoryTextSelected
-                ]}
-              >
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-    </>
-  );
-
-  // Render empty component
-  const renderEmptyComponent = () => (
-    <View style={styles.emptyContainer}>
-      <FontAwesome name="search" size={50} color={theme.textSecondary} />
-      <Text style={[styles.emptyText, { color: theme.text }]}>No characters found</Text>
-      <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>Try a different category</Text>
+          <Text style={styles.resetButtonText}>Reset Filters</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      {/* Use FlatList as the main scrollable component */}
-      <FlatList
-        data={filteredCharacters}
-        renderItem={renderCharacterItem}
-        keyExtractor={item => item.id.toString()}
-        numColumns={2}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmptyComponent}
-        contentContainerStyle={styles.characterGridContent}
-        columnWrapperStyle={styles.characterRow}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.primary}
-          />
-        }
-      />
-
-      {/* Create Character Button (floating) */}
-      <TouchableOpacity 
-        style={[styles.createButton, { 
-          backgroundColor: theme.actionButton,
-          shadowColor: theme.shadow
-        }]}
-        onPress={() => {/* Navigate to character creation */}}
+      <ImageBackground
+        source={{ uri: 'https://images.unsplash.com/photo-1539721972319-f0e80a00d424?q=80&w=1700' }}
+        style={styles.backgroundImage}
+        resizeMode="cover"
       >
-        <FontAwesome name="plus" size={24} color={theme.actionButtonText} />
-      </TouchableOpacity>
+        <StarryBackground />
+        
+        <LinearGradient
+          colors={[
+            'rgba(8, 8, 20, 0.9)',
+            'rgba(12, 12, 35, 0.85)',
+            'rgba(16, 16, 45, 0.8)',
+          ]}
+          style={styles.overlay}
+        />
+        
+        {/* Header */}
+        <Animated.View
+          style={[
+            styles.header,
+            {
+              opacity: headerOpacity,
+              transform: [{ translateY: headerTranslateY }],
+            },
+          ]}
+        >
+          <Text style={styles.headerTitle}>Explore Characters</Text>
+          
+          {/* Search Bar */}
+          <Animated.View
+            style={[
+              styles.searchBarContainer,
+              {
+                opacity: headerOpacity,
+                transform: [{ translateX: searchBarTranslateX }],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.searchBarGradient}
+            >
+              <FontAwesome
+                name="search"
+                size={16}
+                color="rgba(255, 255, 255, 0.6)"
+                style={styles.searchIcon}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search characters..."
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                returnKeyType="search"
+                keyboardAppearance={isDark ? 'dark' : 'light'}
+                selectionColor={theme.primary}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <FontAwesome
+                    name="times-circle"
+                    size={16}
+                    color="rgba(255, 255, 255, 0.6)"
+                  />
+                </TouchableOpacity>
+              )}
+            </LinearGradient>
+          </Animated.View>
+        </Animated.View>
+        
+        {/* Categories */}
+        <Animated.View
+          style={[
+            styles.categoriesContainer,
+            { opacity: categoriesOpacity },
+          ]}
+        >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoriesList}
+          >
+            {CATEGORIES.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryItem,
+                  selectedCategory === category.id && styles.selectedCategoryItem,
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={
+                    selectedCategory === category.id
+                      ? [theme.primary, theme.accent]
+                      : ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.categoryGradient}
+                >
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === category.id && styles.selectedCategoryText,
+                    ]}
+                  >
+                    {category.name}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Animated.View>
+        
+        {/* Characters List */}
+        <ScrollView
+          style={styles.charactersContainer}
+          contentContainerStyle={styles.charactersContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="rgba(255, 255, 255, 0.8)"
+              colors={[theme.primary, theme.accent]}
+            />
+          }
+        >
+          {filteredCharacters.length > 0 ? (
+            filteredCharacters.map((character, index) => (
+              <CharacterItem
+                key={character.id}
+                item={character}
+                index={index}
+                onPress={handleCharacterPress}
+                theme={theme}
+              />
+            ))
+          ) : (
+            renderEmptyState()
+          )}
+        </ScrollView>
+      </ImageBackground>
     </SafeAreaView>
   );
 };
@@ -313,190 +479,166 @@ const ExploreScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#050714',
+  },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 10,
+    paddingBottom: 15,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 15,
+    letterSpacing: 0.5,
   },
-  searchBar: {
+  searchBarContainer: {
+    marginBottom: 15,
+  },
+  searchBarGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    padding: 10,
-    marginRight: 10,
-    height: 44,
-  },
-  searchIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontSize: 16,
+    color: '#fff',
+    padding: 0,
   },
   categoriesContainer: {
-    marginTop: 8,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    paddingBottom: 12,
-    paddingTop: 6,
-    borderRadius: 8,
-    marginHorizontal: 15,
+    marginBottom: 15,
   },
-  categoriesContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+  categoriesList: {
+    paddingHorizontal: 15,
   },
-  categoryTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  categoryItem: {
     marginHorizontal: 5,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  categoryTabSelected: {
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+  selectedCategoryItem: {
+    borderColor: 'transparent',
+  },
+  categoryGradient: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 12,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  categoryTextSelected: {
-    fontWeight: '700',
-  },
-  characterGridContent: {
-    paddingHorizontal: 10,
-    paddingBottom: 80, // Space for floating button
-  },
-  characterRow: {
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  characterCard: {
-    width: itemWidth,
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  characterImageContainer: {
-    width: '100%',
-    height: 180,
-    position: 'relative',
-  },
-  characterImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  placeholderImage: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  characterInitial: {
-    fontSize: 40,
-    fontWeight: 'bold',
-  },
-  characterStatsContainer: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  characterStats: {
-    fontSize: 12,
+  selectedCategoryText: {
+    color: '#fff',
     fontWeight: '600',
-    marginLeft: 4,
   },
-  characterInfo: {
-    padding: 12,
+  charactersContainer: {
+    flex: 1,
   },
-  characterName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  charactersContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
-  characterDescription: {
-    fontSize: 14,
-    marginBottom: 10,
+  characterItemContainer: {
+    marginBottom: 15,
   },
-  tagsContainer: {
+  characterItem: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  characterGradient: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    padding: 15,
+    borderRadius: 16,
   },
-  tagChip: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 6,
-  },
-  tagText: {
-    fontSize: 12,
-  },
-  moreTagsContainer: {
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  moreTagsText: {
-    fontSize: 12,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    paddingBottom: 80,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  emptySubText: {
-    fontSize: 14,
-  },
-  createButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
+  characterAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    marginRight: 15,
+  },
+  characterAvatarText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  characterContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  characterName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  characterCategory: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 6,
+  },
+  characterDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50,
+    paddingHorizontal: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'center',
+    marginBottom: 25,
+  },
+  resetButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  resetButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
   },
 });
 
