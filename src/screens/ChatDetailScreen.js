@@ -158,82 +158,134 @@ const CHARACTER_RESPONSES = {
 };
 
 const ChatDetailScreen = ({ route, navigation }) => {
-  const { characterId } = route.params;
-  // Convert characterId to number to ensure it works with numeric keys
-  const numericCharacterId = Number(characterId);
-  const character = CHARACTERS[numericCharacterId];
+  const { characterId, character } = route.params || {};
   const { theme } = useTheme();
-  
-  const [messages, setMessages] = useState(INITIAL_MESSAGES[numericCharacterId] || []);
-  const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const listRef = useRef(null);
-  
-  // For typing animation
-  const typingOpacity = useRef(new Animated.Value(0)).current;
-  
-  useEffect(() => {
-    // Scroll to bottom when messages change
-    if (listRef.current && messages.length > 0) {
-      listRef.current.scrollToEnd({ animated: true });
-    }
-  }, [messages]);
+  const [messages, setMessages] = useState([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [characterData, setCharacterData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const flatListRef = useRef(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Animation for typing indicator
+  // Animation effects on screen load
   useEffect(() => {
-    if (isTyping) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(typingOpacity, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(typingOpacity, {
-            toValue: 0.3,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      typingOpacity.setValue(0);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Get character data
+  useEffect(() => {
+    const loadCharacter = async () => {
+      setLoading(true);
+      try {
+        // First try to use the character passed directly
+        if (character) {
+          setCharacterData(character);
+        } 
+        // Otherwise try to find by ID in our mock data
+        else if (characterId && CHARACTERS[characterId]) {
+          setCharacterData(CHARACTERS[characterId]);
+        } 
+        // Fallback to a default character
+        else {
+          // If neither is available, this is a development fallback
+          setCharacterData(CHARACTERS[1]);
+          console.warn('Character not found, using fallback');
+        }
+      } catch (error) {
+        console.error('Error loading character:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCharacter();
+  }, [characterId, character]);
+
+  // Load initial messages
+  useEffect(() => {
+    if (characterData) {
+      // Simulate initial messages loading
+      const initialMessages = [
+        {
+          id: 1,
+          text: `Hi there! I'm ${characterData.name}. ${characterData.description || ''}`,
+          sender: 'character',
+          createdAt: new Date(Date.now() - 60000 * 3).toISOString(),
+        },
+        {
+          id: 2,
+          text: 'How can I help you today?',
+          sender: 'character',
+          createdAt: new Date(Date.now() - 60000 * 2).toISOString(),
+        },
+      ];
+      setMessages(initialMessages);
     }
-  }, [isTyping, typingOpacity]);
+  }, [characterData]);
 
   const sendMessage = () => {
-    if (inputText.trim() === '') return;
+    if (!inputMessage.trim()) return;
     
     // Add user message
-    const userMessage = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
+    const newUserMessage = {
+      id: Date.now(),
+      text: inputMessage,
       sender: 'user',
-      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
     
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
+    const updatedMessages = [...messages, newUserMessage];
+    setMessages(updatedMessages);
+    setInputMessage('');
     
-    // Show typing indicator
-    setIsTyping(true);
-    
-    // Simulate character response after delay
+    // Scroll to bottom
     setTimeout(() => {
-      // Random response from character's preset responses
-      const responses = CHARACTER_RESPONSES[numericCharacterId] || [];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
-      const characterMessage = {
-        id: (Date.now() + 1).toString(),
-        text: randomResponse || "Interesting...",
-        sender: 'character',
-        timestamp: new Date().toISOString(),
-      };
-      
-      setIsTyping(false);
-      setMessages(prev => [...prev, characterMessage]);
-    }, 1500 + Math.random() * 1000); // Random delay between 1.5-2.5 seconds
+      flatListRef.current?.scrollToEnd();
+    }, 100);
+    
+    // Simulate character response after a short delay
+    setTimeout(() => {
+      if (characterData) {
+        const characterResponses = [
+          `That's interesting. Tell me more about that.`,
+          `I understand. From my perspective as ${characterData.name}, I think...`,
+          `Great question! Let me think about that.`,
+          `That's a fascinating point. I'd approach it this way...`,
+        ];
+        
+        const randomResponse = characterResponses[Math.floor(Math.random() * characterResponses.length)];
+        
+        const characterMessage = {
+          id: Date.now() + 1,
+          text: randomResponse,
+          sender: 'character',
+          createdAt: new Date().toISOString(),
+        };
+        
+        setMessages([...updatedMessages, characterMessage]);
+        
+        // Scroll to bottom again
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd();
+        }, 100);
+      }
+    }, 1000);
+  };
+
+  const handleBackPress = () => {
+    navigation.goBack();
   };
 
   const formatTime = (isoString) => {
@@ -241,125 +293,115 @@ const ChatDetailScreen = ({ route, navigation }) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderItem = ({ item }) => {
-    const isCharacter = item.sender === 'character';
-    const characterColor = getCharacterBackgroundColor(numericCharacterId, theme);
-    
+  // Loading state
+  if (loading) {
     return (
-      <View style={[styles.messageContainer, isCharacter ? styles.characterMessage : styles.userMessage]}>
-        {isCharacter && (
-          <View style={[styles.avatar, { backgroundColor: characterColor }]}>
-            <Text style={[styles.avatarText, { color: theme.actionButtonText }]}>{character.name[0]}</Text>
-          </View>
-        )}
-        <View style={[
-          styles.messageBubble, 
-          isCharacter 
-            ? [styles.characterBubble, { backgroundColor: theme.messageBubbleReceived }] 
-            : [styles.userBubble, { backgroundColor: theme.messageBubbleSent }]
-        ]}>
-          <Text style={[styles.messageText, { color: theme.text }]}>{item.text}</Text>
-          <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTime(item.timestamp)}</Text>
-        </View>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.loadingText, { color: theme.textLight }]}>
+          Loading conversation...
+        </Text>
       </View>
     );
-  };
+  }
 
-  if (!character) {
+  // Character not found state
+  if (!characterData) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
-        <FontAwesome name="exclamation-circle" size={50} color={theme.danger} />
-        <Text style={[styles.errorText, { color: theme.text }]}>Character not found</Text>
+        <Text style={[styles.errorText, { color: theme.textLight }]}>
+          Character not found
+        </Text>
         <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.goBack()}
+          style={[styles.backButton, { backgroundColor: theme.accent }]}
+          onPress={handleBackPress}
         >
-          <Text style={[styles.backButtonText, { color: theme.actionButtonText }]}>Go Back</Text>
+          <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const characterColor = getCharacterBackgroundColor(numericCharacterId, theme);
-
+  // Render normal chat interface
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: theme.background }]}
-      keyboardVerticalOffset={90}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      {/* Header */}
-      <View style={[styles.header, { 
-        backgroundColor: theme.background,
-        borderBottomColor: theme.border
-      }]}>
+      {/* Chat Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          style={styles.backButton} 
+          onPress={handleBackPress}
         >
           <FontAwesome name="arrow-left" size={24} color={theme.text} />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <View style={[styles.smallAvatar, { backgroundColor: characterColor }]}>
-            <Text style={[styles.smallAvatarText, { color: theme.actionButtonText }]}>{character.name[0]}</Text>
+        
+        <TouchableOpacity 
+          style={styles.characterInfo}
+          onPress={() => navigation.navigate('CharacterDetail', { characterId, character: characterData })}
+        >
+          <View 
+            style={[
+              styles.avatarContainer, 
+              { backgroundColor: getCharacterBackgroundColor(characterData.id, theme) }
+            ]}
+          >
+            <Text style={styles.avatarText}>{characterData.name.charAt(0)}</Text>
           </View>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>{character.name}</Text>
-        </View>
-        <TouchableOpacity style={styles.infoButton} onPress={() => navigation.navigate('CharacterDetail', { characterId })}>
-          <FontAwesome name="info-circle" size={24} color={theme.text} />
+          <Text style={[styles.characterName, { color: theme.text }]}>
+            {characterData.name}
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.menuButton}>
+          <FontAwesome name="ellipsis-v" size={24} color={theme.text} />
         </TouchableOpacity>
       </View>
-
-      {/* Messages */}
+      
+      {/* Chat Messages */}
       <FlatList
-        ref={listRef}
+        ref={flatListRef}
         data={messages}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.messagesList}
-        showsVerticalScrollIndicator={false}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.messagesContainer}
+        renderItem={({ item }) => (
+          <Animated.View
+            style={[
+              styles.messageContainer, 
+              item.sender === 'user' ? styles.userMessage : styles.characterMessage,
+              item.sender === 'user' 
+                ? { backgroundColor: theme.userMessageBackground } 
+                : { backgroundColor: theme.characterMessageBackground }
+            ]}
+          >
+            <Text style={[styles.messageText, { color: theme.text }]}>{item.text}</Text>
+            <Text style={[styles.messageTime, { color: theme.textSecondary }]}>
+              {formatTime(item.createdAt)}
+            </Text>
+          </Animated.View>
+        )}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
       />
-
-      {/* Typing indicator */}
-      {isTyping && (
-        <Animated.View style={[
-          styles.typingIndicator, 
-          { opacity: typingOpacity, backgroundColor: theme.card }
-        ]}>
-          <View style={[styles.typingAvatar, { backgroundColor: characterColor }]}>
-            <Text style={[styles.typingAvatarText, { color: theme.actionButtonText }]}>{character.name[0]}</Text>
-          </View>
-          <View style={styles.typingBubble}>
-            <View style={styles.typingDots}>
-              <View style={[styles.typingDot, { backgroundColor: theme.textSecondary }]} />
-              <View style={[styles.typingDot, { backgroundColor: theme.textSecondary }]} />
-              <View style={[styles.typingDot, { backgroundColor: theme.textSecondary }]} />
-            </View>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* Input area */}
-      <View style={[styles.inputContainer, { 
-        backgroundColor: theme.card,
-        borderTopColor: theme.border
-      }]}>
+      
+      {/* Input Area */}
+      <View style={[styles.inputContainer, { borderTopColor: theme.border }]}>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.inputBackground,
-            color: theme.text,
-            borderColor: theme.border
-          }]}
+          style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
           placeholder="Type a message..."
           placeholderTextColor={theme.textSecondary}
-          value={inputText}
-          onChangeText={setInputText}
+          value={inputMessage}
+          onChangeText={setInputMessage}
           multiline
         />
         <TouchableOpacity 
-          style={[styles.sendButton, { backgroundColor: theme.primary }]}
+          style={[
+            styles.sendButton, 
+            { backgroundColor: theme.primary },
+            !inputMessage.trim() && { opacity: 0.5 }
+          ]} 
           onPress={sendMessage}
-          disabled={inputText.trim() === ''}
+          disabled={!inputMessage.trim()}
         >
           <FontAwesome name="paper-plane" size={20} color={theme.actionButtonText} />
         </TouchableOpacity>
@@ -534,6 +576,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     padding: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  characterInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  characterName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messagesContainer: {
+    paddingHorizontal: 15,
+    paddingVertical: 20,
+  },
+  messageTime: {
+    fontSize: 12,
+    marginTop: 5,
+    alignSelf: 'flex-end',
   },
 });
 

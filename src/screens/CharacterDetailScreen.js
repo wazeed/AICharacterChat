@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -58,30 +58,96 @@ const CHARACTERS = {
 };
 
 const CharacterDetailScreen = ({ route, navigation }) => {
-  const { characterId } = route.params;
-  const character = CHARACTERS[characterId];
+  const { characterId, character } = route.params || {};
   const { theme } = useTheme();
-  
-  const [scrollY] = useState(new Animated.Value(0));
-  
-  // If character not found
-  if (!character) {
+  const [activeTab, setActiveTab] = useState('about');
+  const [loading, setLoading] = useState(true);
+  const [characterData, setCharacterData] = useState(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Animation on screen load
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  // Load character data
+  useEffect(() => {
+    const loadCharacter = async () => {
+      setLoading(true);
+      try {
+        // First try to use the character passed directly
+        if (character) {
+          setCharacterData(character);
+        } 
+        // Otherwise try to find by ID in our mock data
+        else if (characterId && CHARACTERS[characterId]) {
+          setCharacterData(CHARACTERS[characterId]);
+        } 
+        // Fallback to the Paulo character
+        else {
+          // If neither is available, this is a development fallback
+          setCharacterData(CHARACTERS[1]);
+          console.warn('Character not found, using fallback');
+        }
+      } catch (error) {
+        console.error('Error loading character:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCharacter();
+  }, [characterId, character]);
+
+  const handleStartChat = () => {
+    if (characterData) {
+      navigation.navigate('ChatDetail', {
+        characterId: characterData.id,
+        character: characterData
+      });
+    }
+  };
+
+  const handleBackPress = () => {
+    navigation.goBack();
+  };
+
+  // Render function with early return
+  if (!characterData && loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.loadingText, { color: theme.textLight }]}>
+          Loading character...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!characterData && !loading) {
     return (
       <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
-        <FontAwesome name="exclamation-circle" size={50} color={theme.danger} />
-        <Text style={[styles.errorText, { color: theme.text }]}>Character not found</Text>
+        <Text style={[styles.errorText, { color: theme.textLight }]}>
+          Character not found
+        </Text>
         <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.goBack()}
+          style={[styles.backButton, { backgroundColor: theme.accent }]}
+          onPress={handleBackPress}
         >
-          <Text style={[styles.backButtonText, { color: theme.actionButtonText }]}>Go Back</Text>
+          <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // Now we know characterData exists, so continue with render
+  const [scrollY] = useState(new Animated.Value(0));
+  
   // Get character color based on ID
-  const characterColor = getCharacterBackgroundColor(character.id, theme);
+  const characterColor = getCharacterBackgroundColor(characterData.id, theme);
 
   // Header opacity animation based on scroll
   const headerOpacity = scrollY.interpolate({
@@ -103,12 +169,12 @@ const CharacterDetailScreen = ({ route, navigation }) => {
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.headerBackButton}
-            onPress={() => navigation.goBack()}
+            onPress={handleBackPress}
           >
             <FontAwesome name="arrow-left" size={24} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
-            {character.name}
+            {characterData.name}
           </Text>
           <View style={{ width: 24 }} />
         </View>
@@ -127,7 +193,7 @@ const CharacterDetailScreen = ({ route, navigation }) => {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={handleBackPress}
           >
             <FontAwesome name="arrow-left" size={24} color={theme.text} />
           </TouchableOpacity>
@@ -137,12 +203,12 @@ const CharacterDetailScreen = ({ route, navigation }) => {
         <View style={styles.characterHeader}>
           <View style={[styles.avatar, { backgroundColor: characterColor }]}>
             <Text style={[styles.avatarText, { color: theme.actionButtonText }]}>
-              {character.name[0]}
+              {characterData.name[0]}
             </Text>
           </View>
-          <Text style={[styles.characterName, { color: theme.text }]}>{character.name}</Text>
+          <Text style={[styles.characterName, { color: theme.text }]}>{characterData.name}</Text>
           <Text style={[styles.characterCategory, { color: theme.textSecondary }]}>
-            {character.category.charAt(0).toUpperCase() + character.category.slice(1)}
+            {characterData.category.charAt(0).toUpperCase() + characterData.category.slice(1)}
           </Text>
         </View>
 
@@ -150,7 +216,7 @@ const CharacterDetailScreen = ({ route, navigation }) => {
         <View style={[styles.section, { borderTopColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>About</Text>
           <Text style={[styles.sectionText, { color: theme.textSecondary }]}>
-            {character.longDescription}
+            {characterData.longDescription}
           </Text>
         </View>
 
@@ -158,7 +224,7 @@ const CharacterDetailScreen = ({ route, navigation }) => {
         <View style={[styles.section, { borderTopColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Personality</Text>
           <Text style={[styles.sectionText, { color: theme.textSecondary }]}>
-            {character.personality}
+            {characterData.personality}
           </Text>
         </View>
 
@@ -166,7 +232,7 @@ const CharacterDetailScreen = ({ route, navigation }) => {
         <View style={[styles.section, { borderTopColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Traits</Text>
           <View style={styles.tagsContainer}>
-            {character.traits.map((trait, index) => (
+            {characterData.traits.map((trait, index) => (
               <View style={[styles.tag, { backgroundColor: theme.secondary }]} key={index}>
                 <Text style={[styles.tagText, { color: theme.text }]}>{trait}</Text>
               </View>
@@ -177,7 +243,7 @@ const CharacterDetailScreen = ({ route, navigation }) => {
         {/* Known for */}
         <View style={[styles.section, { borderTopColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Known For</Text>
-          {character.knownFor.map((item, index) => (
+          {characterData.knownFor.map((item, index) => (
             <View style={styles.listItem} key={index}>
               <FontAwesome name="star" size={16} color={theme.primary} style={styles.listIcon} />
               <Text style={[styles.listText, { color: theme.text }]}>{item}</Text>
@@ -191,7 +257,7 @@ const CharacterDetailScreen = ({ route, navigation }) => {
             backgroundColor: theme.actionButton,
             shadowColor: theme.shadow
           }]}
-          onPress={() => navigation.navigate('ChatDetail', { characterId: character.id })}
+          onPress={handleStartChat}
         >
           <FontAwesome name="comment" size={20} color={theme.actionButtonText} style={styles.chatButtonIcon} />
           <Text style={[styles.chatButtonText, { color: theme.actionButtonText }]}>
@@ -247,20 +313,17 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    alignItems: 'center',
   },
   errorText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 20,
+    fontWeight: '600',
     marginBottom: 20,
   },
   backButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    padding: 10,
+    color: 'white',
+    fontWeight: '600',
   },
   characterHeader: {
     alignItems: 'center',
@@ -351,6 +414,15 @@ const styles = StyleSheet.create({
   chatButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 

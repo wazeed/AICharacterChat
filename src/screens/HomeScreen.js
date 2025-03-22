@@ -13,6 +13,7 @@ import {
   SafeAreaView,
   ImageBackground,
   FlatList,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -35,26 +36,26 @@ const getCharacterBackgroundColor = (id, theme) => {
 
 // Mock data for featured and recent characters
 const FEATURED_CHARACTERS = [
-  { id: 1, name: 'Gandalf', avatar: null, category: 'Fantasy', description: 'A wise wizard with powerful magic and timeless wisdom' },
-  { id: 2, name: 'Marie Curie', avatar: null, category: 'Historical', description: 'Nobel Prize winner and pioneer in the field of radioactivity' },
-  { id: 3, name: 'Captain Picard', avatar: null, category: 'Sci-Fi', description: 'Starfleet captain known for diplomacy and leadership' },
-  { id: 4, name: 'Sherlock Holmes', avatar: null, category: 'Literature', description: "The world's greatest detective with exceptional deductive skills" },
-  { id: 5, name: 'Ada Lovelace', avatar: null, category: 'Science', description: "Known as the world's first computer programmer" },
-  { id: 6, name: 'Socrates', avatar: null, category: 'Philosophy', description: "Ancient Greek philosopher and founder of Western philosophy" },
+  { id: 1, name: 'Paulo', avatar: null, category: 'Text Game', description: '/Can I play ball with the mlk...', tags: ['Text Game', 'Loyal', 'Gentle', 'Jealous', 'Naughty'] },
+  { id: 2, name: 'Nishimura Riki', avatar: null, category: 'Movies&TV', description: 'Riki |forced marriage for our dad\'s companies 💮', tags: ['Elegant', 'Movies&TV', 'Romance'] },
+  { id: 3, name: 'biker boy', avatar: null, category: 'OC', description: 'He is very selfish bit kinda sweet.', tags: ['OC', 'Student', 'Cold', 'Gentle', 'Badboy'] },
+  { id: 4, name: 'Charlotte', avatar: null, category: 'Romance', description: 'Your cousin who is over for the weekend', tags: ['Romance', 'Flirty', 'Family'] },
+  { id: 5, name: 'Ada Lovelace', avatar: null, category: 'Science', description: "Known as the world's first computer programmer", tags: ['Historical', 'Science', 'Genius'] },
+  { id: 6, name: 'Socrates', avatar: null, category: 'Philosophy', description: "Ancient Greek philosopher and founder of Western philosophy", tags: ['Philosophy', 'Historical', 'Wise'] },
+];
+
+// Quick Actions data
+const QUICK_ACTIONS = [
+  { id: 1, name: 'For You', icon: 'star', screen: 'ExploreScreen', params: { filter: 'forYou' } },
+  { id: 2, name: 'Multi-Role', icon: 'users', screen: 'ExploreScreen', params: { filter: 'multiRole' } },
+  { id: 3, name: 'OC', icon: 'pencil', screen: 'ExploreScreen', params: { filter: 'OC' } },
+  { id: 4, name: 'Anime', icon: 'heart', screen: 'ExploreScreen', params: { filter: 'Anime' } },
 ];
 
 const RECENT_CHATS = [
   { id: 2, name: 'Marie Curie', avatar: null, lastMessage: 'The discovery of radium was one of the most important moments in science.', time: '2h ago' },
   { id: 1, name: 'Gandalf', avatar: null, lastMessage: 'A wizard is never late, nor is he early. He arrives precisely when he means to.', time: '5h ago' },
   { id: 3, name: 'Captain Picard', avatar: null, lastMessage: 'Make it so. The Enterprise will be ready for our next mission.', time: 'Yesterday' },
-];
-
-// Quick actions for grid layout
-const QUICK_ACTIONS = [
-  { id: 'explore', name: 'Explore', icon: 'compass', screen: 'Explore' },
-  { id: 'chats', name: 'Chats', icon: 'comments', screen: 'Chats' },
-  { id: 'profile', name: 'Profile', icon: 'user-circle', screen: 'Profile' },
-  { id: 'notifications', name: 'Notifications', icon: 'bell', screen: 'Notifications' },
 ];
 
 // Creates a starry background effect
@@ -108,119 +109,119 @@ const StarryBackground = ({ count = 40 }) => {
   return <View style={{ position: 'absolute', width, height }}>{stars}</View>;
 };
 
-// Animated Featured Character Card for Grid Layout
+// Featured character card component as a grid item
 const FeaturedCharacterCard = ({ item, index, onPress, theme }) => {
-  const translateY = useRef(new Animated.Value(30)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const animatedValue = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 600,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 600,
-        delay: index * 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(animatedValue, {
+      toValue: 1,
+      duration: 600,
+      delay: index * 100,
+      useNativeDriver: true,
+    }).start();
   }, []);
-  
+
   return (
     <Animated.View
       style={[
-        styles.gridFeaturedCard,
+        styles.featuredCardContainer,
         {
-          opacity,
-          transform: [{ translateY }],
+          opacity: animatedValue,
+          transform: [
+            {
+              translateY: animatedValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [50, 0],
+              }),
+            },
+          ],
         },
       ]}
     >
       <TouchableOpacity
-        style={styles.featuredCardTouchable}
+        style={[styles.featuredCard]}
         onPress={() => onPress(item)}
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.8)']}
           style={styles.featuredCardGradient}
         >
-          <View
-            style={[
-              styles.featuredAvatar,
-              { backgroundColor: getCharacterBackgroundColor(item.id, theme) }
-            ]}
-          >
-            <Text style={styles.featuredAvatarText}>{item.name.charAt(0)}</Text>
+          {item.avatar ? (
+            <Image source={{ uri: item.avatar }} style={styles.featuredAvatar} />
+          ) : (
+            <View
+              style={[
+                styles.featuredAvatarPlaceholder,
+                { backgroundColor: getCharacterBackgroundColor(item.id, theme) },
+              ]}
+            >
+              <Text style={styles.featuredAvatarLetter}>{item.name.charAt(0)}</Text>
+            </View>
+          )}
+          
+          <View style={styles.featuredCardContent}>
+            <Text style={styles.featuredCardName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.featuredCardCategory} numberOfLines={1}>{item.category}</Text>
+            <Text style={styles.featuredCardDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
           </View>
-          
-          <Text style={styles.featuredName}>{item.name}</Text>
-          <Text style={styles.featuredCategory}>{item.category}</Text>
-          
-          <Text style={styles.featuredDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
         </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
-// Quick Action Item for Grid
+// Quick action item component
 const QuickActionItem = ({ item, index, onPress, theme }) => {
-  const translateY = useRef(new Animated.Value(20)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+  const animatedValue = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 500,
-        delay: index * 100 + 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 500,
-        delay: index * 100 + 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    Animated.timing(animatedValue, {
+      toValue: 1,
+      duration: 600,
+      delay: index * 100,
+      useNativeDriver: true,
+    }).start();
   }, []);
-  
+
   return (
     <Animated.View
       style={[
-        styles.quickActionItem,
+        styles.quickActionContainer,
         {
-          opacity,
-          transform: [{ translateY }],
+          opacity: animatedValue,
+          transform: [
+            {
+              translateY: animatedValue.interpolate({
+                inputRange: [0, 1],
+                outputRange: [50, 0],
+              }),
+            },
+          ],
         },
       ]}
     >
-      <TouchableOpacity 
-        style={styles.actionButton}
-        onPress={() => onPress(item.screen)}
+      <TouchableOpacity
+        style={[styles.quickActionItem, { borderColor: theme.border }]}
+        onPress={() => onPress(item)}
+        activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)']}
-          style={styles.actionGradient}
+          colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.8)']}
+          style={styles.quickActionGradient}
         >
-          <FontAwesome name={item.icon} size={24} color="rgba(255,255,255,0.9)" />
-          <Text style={styles.actionText}>{item.name}</Text>
+          <FontAwesome name={item.icon} size={24} color={theme.textLight} />
+          <Text style={styles.quickActionName}>{item.name}</Text>
         </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
 };
 
-// Recent Chat Item with animations
+// Recent chat item component
 const RecentChatItem = ({ item, index, onPress, theme }) => {
   const translateX = useRef(new Animated.Value(-20)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -289,47 +290,21 @@ const RecentChatItem = ({ item, index, onPress, theme }) => {
 };
 
 const HomeScreen = ({ navigation }) => {
+  const { theme } = useTheme();
   const { user, logout } = useAuth();
-  const { theme, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
-  const [greeting, setGreeting] = useState('');
-  
-  // Animation values
-  const headerOpacity = useRef(new Animated.Value(0)).current;
-  const headerTranslateY = useRef(new Animated.Value(-20)).current;
-  const sectionOpacity = useRef(new Animated.Value(0)).current;
-  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
   useEffect(() => {
-    // Set greeting based on time of day
-    const hour = new Date().getHours();
-    let newGreeting = '';
-    
-    if (hour < 12) {
-      newGreeting = 'Good Morning';
-    } else if (hour < 18) {
-      newGreeting = 'Good Afternoon';
-    } else {
-      newGreeting = 'Good Evening';
-    }
-    
-    setGreeting(newGreeting);
-    
-    // Start animations
-    Animated.stagger(150, [
-      Animated.parallel([
-        Animated.timing(headerOpacity, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(headerTranslateY, {
-          toValue: 0,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(sectionOpacity, {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
         toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
         duration: 600,
         useNativeDriver: true,
       }),
@@ -339,35 +314,39 @@ const HomeScreen = ({ navigation }) => {
   const handleLogout = async () => {
     try {
       await logout();
+      navigation.navigate('Login');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout failed', error);
     }
   };
 
   const onRefresh = () => {
     setRefreshing(true);
-    // Simulate refresh
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
+    // In a real app, fetch fresh data here
+    setTimeout(() => setRefreshing(false), 1500);
   };
 
   const handleCharacterPress = (character) => {
-    navigation.navigate('CharacterDetail', { character });
-  };
-  
-  const handleChatPress = (chat) => {
-    navigation.navigate('ChatDetail', { 
-      chatId: chat.id, 
-      characterName: chat.name 
-    });
-  };
-  
-  const handleNavigate = (screen) => {
-    navigation.navigate(screen);
+    // Pass the full character object
+    navigation.navigate('CharacterDetail', { characterId: character.id, character: character });
   };
 
-  // Render grid item for featured characters
+  const handleChatPress = (chat) => {
+    // Pass the full chat object and character ID
+    navigation.navigate('ChatDetail', {
+      characterId: chat.id,
+      character: chat
+    });
+  };
+
+  const handleQuickActionPress = (item) => {
+    if (item.screen && item.params) {
+      navigation.navigate(item.screen, item.params);
+    } else {
+      Alert.alert('Coming Soon', 'This feature will be available in a future update.');
+    }
+  };
+
   const renderFeaturedItem = ({ item, index }) => (
     <FeaturedCharacterCard
       item={item}
@@ -376,23 +355,31 @@ const HomeScreen = ({ navigation }) => {
       theme={theme}
     />
   );
-  
-  // Render grid item for quick actions
+
   const renderQuickActionItem = ({ item, index }) => (
     <QuickActionItem
       item={item}
       index={index}
-      onPress={handleNavigate}
+      onPress={handleQuickActionPress}
+      theme={theme}
+    />
+  );
+
+  const renderRecentChatItem = ({ item, index }) => (
+    <RecentChatItem
+      key={item.id}
+      item={item}
+      index={index}
+      onPress={handleChatPress}
       theme={theme}
     />
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle="light-content" />
       <ImageBackground
-        source={{ uri: 'https://images.unsplash.com/photo-1536859355448-76f92ebdc33d?q=80&w=1700' }}
+        source={{ uri: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=1471&auto=format&fit=crop' }}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
@@ -408,14 +395,13 @@ const HomeScreen = ({ navigation }) => {
         />
         
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="rgba(255, 255, 255, 0.8)"
-              colors={[theme.primary, theme.accent]}
+              tintColor={theme.textLight}
             />
           }
         >
@@ -424,86 +410,133 @@ const HomeScreen = ({ navigation }) => {
             style={[
               styles.header,
               {
-                opacity: headerOpacity,
-                transform: [{ translateY: headerTranslateY }],
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
               },
             ]}
           >
             <View style={styles.headerContent}>
               <View>
-                <Text style={styles.greeting}>{greeting}</Text>
-                <Text style={styles.username}>{user?.name || 'AI Explorer'}</Text>
+                <Text style={[styles.welcomeText, { color: theme.textLight }]}>
+                  Welcome back
+                </Text>
+                <Text style={[styles.userNameText, { color: theme.textLight }]}>
+                  {user?.displayName || 'User'}
+                </Text>
               </View>
-              
               <TouchableOpacity
                 style={styles.profileButton}
                 onPress={() => navigation.navigate('Profile')}
               >
-                <LinearGradient
-                  colors={[theme.primary, theme.accent]}
-                  style={styles.profileGradient}
-                >
-                  <FontAwesome name="user" size={18} color="#fff" />
-                </LinearGradient>
+                <FontAwesome name="user-circle" size={32} color={theme.textLight} />
               </TouchableOpacity>
             </View>
           </Animated.View>
-          
-          {/* Quick Actions Grid */}
-          <Animated.View style={{ opacity: sectionOpacity, marginTop: 15 }}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-            </View>
-            
+
+          {/* Quick Actions Section */}
+          <Animated.View
+            style={[
+              styles.sectionContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: theme.textLight }]}>
+              Categories
+            </Text>
             <FlatList
               data={QUICK_ACTIONS}
               renderItem={renderQuickActionItem}
-              keyExtractor={item => item.id}
+              keyExtractor={(item) => `quick-action-${item.id}`}
+              horizontal={false}
               numColumns={2}
-              scrollEnabled={false}
-              contentContainerStyle={styles.quickActionsGrid}
+              columnWrapperStyle={styles.quickActionsRow}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickActionsContainer}
             />
           </Animated.View>
-          
-          {/* Featured Characters Grid */}
-          <Animated.View style={{ opacity: sectionOpacity, marginTop: 15 }}>
+
+          {/* Featured Characters Section */}
+          <Animated.View
+            style={[
+              styles.sectionContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Featured Characters</Text>
+              <Text style={[styles.sectionTitle, { color: theme.textLight }]}>
+                Featured Characters
+              </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Explore')}>
-                <Text style={styles.seeAllText}>See All</Text>
+                <Text style={[styles.seeAllText, { color: theme.accent }]}>See All</Text>
               </TouchableOpacity>
             </View>
-            
             <FlatList
               data={FEATURED_CHARACTERS}
               renderItem={renderFeaturedItem}
-              keyExtractor={item => item.id.toString()}
+              keyExtractor={(item) => `featured-${item.id}`}
+              horizontal={false}
               numColumns={2}
-              scrollEnabled={false}
-              contentContainerStyle={styles.featuredGrid}
+              columnWrapperStyle={styles.gridRow}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.featuredContainer}
             />
           </Animated.View>
-          
+
           {/* Recent Chats Section */}
-          <Animated.View style={{ opacity: sectionOpacity, marginTop: 20 }}>
+          <Animated.View
+            style={[
+              styles.sectionContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Conversations</Text>
+              <Text style={[styles.sectionTitle, { color: theme.textLight }]}>
+                Continue Chatting
+              </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Chats')}>
-                <Text style={styles.seeAllText}>View All</Text>
+                <Text style={[styles.seeAllText, { color: theme.accent }]}>See All</Text>
               </TouchableOpacity>
             </View>
-            
-            <View style={styles.recentChatsList}>
-              {RECENT_CHATS.map((chat, index) => (
-                <RecentChatItem
-                  key={chat.id}
-                  item={chat}
-                  index={index}
-                  onPress={handleChatPress}
-                  theme={theme}
-                />
-              ))}
-            </View>
+            {RECENT_CHATS.map((chat, index) => (
+              <TouchableOpacity 
+                key={`chat-${chat.id}`}
+                style={styles.recentChatItem}
+                onPress={() => handleChatPress(chat)}
+              >
+                <View style={styles.chatAvatarContainer}>
+                  {chat.avatar ? (
+                    <Image source={{ uri: chat.avatar }} style={styles.chatAvatar} />
+                  ) : (
+                    <View
+                      style={[
+                        styles.chatAvatarPlaceholder,
+                        { backgroundColor: getCharacterBackgroundColor(chat.id, theme) },
+                      ]}
+                    >
+                      <Text style={styles.chatAvatarLetter}>{chat.name.charAt(0)}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.chatContent}>
+                  <View style={styles.chatHeader}>
+                    <Text style={[styles.chatName, { color: theme.textLight }]}>{chat.name}</Text>
+                    <Text style={[styles.chatTime, { color: theme.textSecondary }]}>{chat.time}</Text>
+                  </View>
+                  <Text style={[styles.chatMessage, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {chat.lastMessage}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </Animated.View>
         </ScrollView>
       </ImageBackground>
@@ -514,202 +547,203 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#050714',
   },
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
+  scrollView: {
+    flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 30,
+  contentContainer: {
+    paddingBottom: 20,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
+    padding: 20,
+    paddingTop: 10,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  greeting: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 4,
+  welcomeText: {
+    fontSize: 16,
+    opacity: 0.8,
+    fontWeight: '400',
   },
-  username: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
+  userNameText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 4,
   },
   profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
+    padding: 10,
   },
-  profileGradient: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 22,
+  sectionContainer: {
+    marginTop: 20,
+    paddingHorizontal: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 25,
     marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 0.5,
+    fontWeight: 'bold',
   },
   seeAllText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontWeight: '600',
   },
-  // Grid Layouts
-  quickActionsGrid: {
-    paddingHorizontal: 10,
+  // Featured grid styles
+  featuredContainer: {
+    paddingBottom: 10,
   },
-  quickActionItem: {
-    width: '50%',
-    paddingHorizontal: 10,
+  gridRow: {
+    justifyContent: 'space-between',
     marginBottom: 15,
   },
-  featuredGrid: {
-    paddingHorizontal: 10,
-  },
-  gridFeaturedCard: {
-    width: '50%', 
-    paddingHorizontal: 10,
-    marginBottom: 15,
-  },
-  // Featured Characters
-  featuredCardTouchable: {
-    flex: 1,
-  },
-  featuredCardGradient: {
-    padding: 16,
+  featuredCardContainer: {
+    width: (width - 60) / 2, // 2 columns with 20px padding on sides and 20px spacing
     height: 200,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+  },
+  featuredCard: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  featuredCardGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
+    padding: 15,
   },
   featuredAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
+    position: 'absolute',
+    top: 20,
+    left: 15,
+  },
+  featuredAvatarPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    position: 'absolute',
+    top: 20,
+    left: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
   },
-  featuredAvatarText: {
-    fontSize: 22,
+  featuredAvatarLetter: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: 'white',
   },
-  featuredName: {
+  featuredCardContent: {
+    width: '100%',
+  },
+  featuredCardName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: 'bold',
+    color: 'white',
     marginBottom: 4,
   },
-  featuredCategory: {
+  featuredCardCategory: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 12,
-  },
-  featuredDescription: {
-    fontSize: 14,
-    lineHeight: 20,
     color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 6,
   },
-  // Recent Chats
-  recentChatsList: {
-    paddingHorizontal: 20,
+  featuredCardDescription: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
-  recentChatContainer: {
-    marginBottom: 12,
+  // Quick actions grid styles
+  quickActionsContainer: {
+    paddingBottom: 10,
   },
-  recentChatItem: {
+  quickActionsRow: {
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  quickActionContainer: {
+    width: (width - 60) / 2, // 2 columns with 20px padding on sides and 20px spacing
+    height: 100,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  quickActionItem: {
+    width: '100%',
+    height: '100%',
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  recentChatGradient: {
+  quickActionGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 15,
+  },
+  quickActionName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginTop: 10,
+  },
+  // Recent chat styles
+  recentChatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  recentAvatar: {
+  chatAvatarContainer: {
+    marginRight: 15,
+  },
+  chatAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  chatAvatarPlaceholder: {
     width: 50,
     height: 50,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
-  recentAvatarText: {
-    fontSize: 18,
+  chatAvatarLetter: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: 'white',
   },
-  recentChatContent: {
+  chatContent: {
     flex: 1,
   },
-  recentChatHeader: {
+  chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  recentChatName: {
+  chatName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: 'bold',
   },
-  recentChatTime: {
+  chatTime: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
   },
-  recentChatMessage: {
+  chatMessage: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  // Quick Actions Styling
-  actionButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  actionGradient: {
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    height: 120,
-  },
-  actionText: {
-    marginTop: 10,
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.9)',
   },
 });
 

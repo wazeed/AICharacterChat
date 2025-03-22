@@ -334,18 +334,56 @@ const ProfileScreen = ({ navigation }) => {
   const handleSettingPress = (item) => {
     // Check if the screen exists before navigating
     if (item.screen) {
-      // For demonstration purposes, we'll alert for screens that may not be fully implemented
-      if (!['Profile', 'Home', 'Explore', 'Chats'].includes(item.screen)) {
-        Alert.alert(
-          'Navigate to ' + item.title,
-          `This would navigate to the ${item.screen} screen`,
-          [
-            { text: 'OK', onPress: () => console.log(`Navigate to ${item.screen}`) }
-          ]
-        );
+      // Special handling for screens that need parameters
+      if (item.screen === 'FAQ') {
+        navigation.navigate('FAQ');
+      } else if (item.screen === 'Feedback') {
+        navigation.navigate('Feedback');
+      } else if (item.screen === 'Notifications') {
+        navigation.navigate('Notifications');
+      } else if (item.screen === 'Home') {
+        navigation.navigate('Home');
+      } else if (item.screen === 'Explore') {
+        navigation.navigate('Explore');
+      } else if (item.screen === 'Chats') {
+        navigation.navigate('Chats');
       } else {
-        navigation.navigate(item.screen);
+        // For screens that might not be fully implemented yet
+        Alert.alert(
+          'Coming Soon',
+          `The ${item.title} feature will be available in a future update.`,
+          [{ text: 'OK', onPress: () => console.log(`Navigate to ${item.screen} canceled`) }]
+        );
       }
+    } else if (item.action === 'logout') {
+      handleLogout();
+    } else if (item.action === 'editProfile') {
+      handleEditProfile();
+    } else if (item.action) {
+      // For other custom actions
+      Alert.alert(
+        'Feature',
+        `This would trigger the ${item.action} action`,
+        [{ text: 'OK', onPress: () => console.log(`Action ${item.action} triggered`) }]
+      );
+    }
+  };
+
+  const handleStatPress = (statType) => {
+    // Navigate to appropriate screen based on stat type
+    switch (statType) {
+      case 'characters':
+        navigation.navigate('Explore');
+        break;
+      case 'chats':
+        navigation.navigate('Chats');
+        break;
+      default:
+        Alert.alert(
+          'Coming Soon',
+          'This feature will be available in a future update.',
+          [{ text: 'OK' }]
+        );
     }
   };
 
@@ -404,22 +442,6 @@ const ProfileScreen = ({ navigation }) => {
       </View>
     </Modal>
   );
-
-  const handleStatPress = (statType) => {
-    // Navigate to appropriate screen based on stat type
-    switch (statType) {
-      case 'characters':
-        navigation.navigate('Explore');
-        break;
-      case 'chats':
-        navigation.navigate('Chats');
-        break;
-      default:
-        // For subscription/months, show alert
-        Alert.alert('Subscription Info', 'This would show your subscription details.');
-        break;
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>

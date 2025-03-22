@@ -75,56 +75,45 @@ const FAQItem = ({ item, isOpen, onToggle, theme }) => {
 
 const FAQScreen = ({ navigation }) => {
   const { theme } = useTheme();
-  const [expandedIndex, setExpandedIndex] = useState(null);
+  const [openFAQs, setOpenFAQs] = useState([]);
 
   const toggleFAQ = (index) => {
-    setExpandedIndex(expandedIndex === index ? null : index);
+    if (openFAQs.includes(index)) {
+      setOpenFAQs(openFAQs.filter(item => item !== index));
+    } else {
+      setOpenFAQs([...openFAQs, index]);
+    }
+  };
+
+  const handleBackPress = () => {
+    navigation.goBack();
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <FontAwesome name="chevron-left" size={20} color={theme.text} />
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <FontAwesome name="arrow-left" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>FAQ</Text>
-        <View style={styles.placeholderButton} />
+        <View style={styles.headerRight} />
       </View>
 
-      <ScrollableContent>
-        <Text style={[styles.introText, { color: theme.textSecondary }]}>
-          Find answers to common questions about using AI Character Chat.
+      <ScrollableContent
+        contentContainerStyle={styles.contentContainer}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Frequently Asked Questions
         </Text>
-
         {faqData.map((item, index) => (
           <FAQItem 
-            key={item.id} 
-            item={item} 
-            isOpen={expandedIndex === index} 
-            onToggle={() => toggleFAQ(index)} 
+            key={item.id}
+            item={item}
+            isOpen={openFAQs.includes(index)}
+            onToggle={() => toggleFAQ(index)}
             theme={theme}
           />
         ))}
-
-        <View style={[styles.moreHelpContainer, { 
-          backgroundColor: theme.secondary,
-          borderColor: theme.border
-        }]}>
-          <Text style={[styles.moreHelpTitle, { color: theme.text }]}>
-            Need more help?
-          </Text>
-          <Text style={[styles.moreHelpText, { color: theme.textSecondary }]}>
-            Contact our support team for assistance with any issues.
-          </Text>
-          <TouchableOpacity 
-            style={[styles.contactButton, { backgroundColor: theme.primary }]}
-            onPress={() => navigation.navigate('Feedback')}
-          >
-            <Text style={[styles.contactButtonText, { color: theme.actionButtonText }]}>
-              Contact Support
-            </Text>
-          </TouchableOpacity>
-        </View>
       </ScrollableContent>
     </View>
   );
@@ -150,17 +139,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
-  placeholderButton: {
+  headerRight: {
     width: 36,
   },
   scrollContent: {
     padding: 20,
     paddingBottom: 40,
   },
-  introText: {
-    fontSize: 16,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 24,
-    lineHeight: 24,
   },
   faqItem: {
     marginBottom: 16,
@@ -212,6 +201,10 @@ const styles = StyleSheet.create({
   contactButtonText: {
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 40,
   },
 });
 

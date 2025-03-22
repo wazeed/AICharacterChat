@@ -49,17 +49,36 @@ const FeedbackForm = ({ navigation }) => {
     }, 1000);
   };
 
+  const handleBackPress = () => {
+    if (feedbackText.trim()) {
+      Alert.alert(
+        'Discard Feedback',
+        'You have unsaved changes. Are you sure you want to go back?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() }
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
+  };
+
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <FontAwesome name="chevron-left" size={20} color={theme.text} />
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBackPress}
+        >
+          <FontAwesome name="arrow-left" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Feedback</Text>
-        <View style={styles.placeholderButton} />
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Send Feedback</Text>
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView 
@@ -165,7 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
-  placeholderButton: {
+  headerRight: {
     width: 36,
   },
   scrollContent: {
