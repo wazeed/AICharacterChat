@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,15 @@ import {
   SafeAreaView,
   StatusBar,
   RefreshControl,
+  ImageBackground,
+  Animated,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS, GRADIENTS, SHADOWS, BACKGROUND_IMAGES } from '../constants/theme';
+
+const { width, height } = Dimensions.get('window');
 
 // Mock character categories
 const CATEGORIES = [
@@ -27,11 +33,11 @@ const CATEGORIES = [
 // Mock character data with placeholder background colors
 const getCharacterBackgroundColor = (id, theme) => {
   const colors = [
-    theme.primary,
-    theme.accent,
-    theme.secondary,
-    theme.success,
-    theme.warning
+    COLORS.primary,
+    COLORS.accent,
+    COLORS.secondary,
+    COLORS.accentSecondary,
+    COLORS.primaryLight
   ];
   return colors[id % colors.length];
 };
@@ -112,200 +118,276 @@ const CHARACTERS = [
   },
 ];
 
-const { width } = Dimensions.get('window');
 const itemWidth = (width - 40) / 2;
 
 const ExploreScreen = ({ navigation, route }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('for_you');
   const [refreshing, setRefreshing] = useState(false);
+  const [filteredCharacters, setFilteredCharacters] = useState(CHARACTERS);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  
+  useEffect(() => {
+    // Start animations when the component mounts
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    // Filter characters based on selected category and search query
+    filterCharacters();
+  }, [selectedCategory, searchQuery]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    // Simulate a refresh with a timeout
+    // Simulate a refresh
     setTimeout(() => {
       setRefreshing(false);
     }, 1500);
   };
-
-  // Filter characters based on search query and selected category
-  const filteredCharacters = CHARACTERS.filter(character => {
-    const matchesSearch = !searchQuery || 
-                          character.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          character.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'for_you' || character.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  
+  const filterCharacters = () => {
+    let filtered = CHARACTERS;
+    
+    // Filter by category
+    if (selectedCategory !== 'for_you') {
+      filtered = filtered.filter(char => char.category === selectedCategory);
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        char => 
+          char.name.toLowerCase().includes(query) || 
+          char.description.toLowerCase().includes(query) ||
+          (char.tags && char.tags.some(tag => tag.toLowerCase().includes(query)))
+      );
+    }
+    
+    setFilteredCharacters(filtered);
+  };
 
   const renderCharacterItem = ({ item }) => (
-    <TouchableOpacity 
-      style={[styles.characterCard, { backgroundColor: theme.card }]}
-      onPress={() => navigation.navigate('ChatDetail', { characterId: item.id })}
+    <Animated.View 
+      style={{ 
+        opacity: fadeAnim,
+        transform: [{ translateY: slideAnim }, { scale: scaleAnim }]
+      }}
     >
-      <View style={styles.characterImageContainer}>
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.characterImage} />
-        ) : (
-          <View style={[
-            styles.placeholderImage, 
-            { backgroundColor: getCharacterBackgroundColor(item.id, theme) }
-          ]}>
-            <Text style={[styles.characterInitial, { color: theme.actionButtonText }]}>
-              {item.name[0]}
-            </Text>
+      <TouchableOpacity
+        style={styles.characterCard}
+        onPress={() => navigation.navigate('CharacterDetail', { characterId: item.id })}
+      >
+        <LinearGradient
+          colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.6)']}
+          style={styles.cardGradient}
+        >
+          <View style={styles.characterContent}>
+            <View style={styles.characterImageContainer}>
+              {item.image ? (
+                <Image source={{ uri: item.image }} style={styles.characterImage} />
+              ) : (
+                <View
+                  style={[
+                    styles.characterImagePlaceholder,
+                    { backgroundColor: getCharacterBackgroundColor(item.id, theme) },
+                  ]}
+                >
+                  <Text style={styles.characterImagePlaceholderText}>
+                    {item.name.charAt(0)}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.characterDetails}>
+              <Text style={styles.characterName}>{item.name}</Text>
+              <Text style={styles.characterDescription} numberOfLines={2}>
+                {item.description}
+              </Text>
+              
+              <View style={styles.tagsContainer}>
+                {item.tags && item.tags.slice(0, 2).map((tag, index) => (
+                  <View key={index} style={styles.tagPill}>
+                    <Text style={styles.tagText}>#{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
-        )}
-        <View style={[styles.characterStatsContainer, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-          <FontAwesome name="comment" size={14} color={theme.actionButtonText} />
-          <Text style={[styles.characterStats, { color: theme.actionButtonText }]}>{item.stats}</Text>
-        </View>
-      </View>
-      
-      <View style={styles.characterInfo}>
-        <Text style={[styles.characterName, { color: theme.text }]}>{item.name}</Text>
-        <Text style={[styles.characterDescription, { color: theme.textSecondary }]} numberOfLines={2}>
-          {item.description}
-        </Text>
-        
-        <View style={styles.tagsContainer}>
-          {item.tags.slice(0, 3).map((tag, index) => (
-            <View key={index} style={[styles.tagChip, { backgroundColor: theme.secondary }]}>
-              <Text style={[styles.tagText, { color: theme.text }]}>{tag}</Text>
+          
+          <View style={styles.characterStats}>
+            <View style={styles.statItem}>
+              <FontAwesome name="heart" size={14} color={COLORS.accent} />
+              <Text style={styles.statText}>{item.stats?.likes || 0}</Text>
             </View>
-          ))}
-          {item.tags.length > 3 && (
-            <View style={styles.moreTagsContainer}>
-              <Text style={[styles.moreTagsText, { color: theme.textSecondary }]}>+{item.tags.length - 3}</Text>
+            
+            <View style={styles.statItem}>
+              <FontAwesome name="comment" size={14} color={COLORS.primary} />
+              <Text style={styles.statText}>{item.stats?.messages || 0}</Text>
             </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
+            
+            <View style={styles.statItem}>
+              <FontAwesome name="star" size={14} color={COLORS.accentSecondary} />
+              <Text style={styles.statText}>{item.stats?.rating || 0}</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    </Animated.View>
   );
 
-  // Render header component for the FlatList
   const renderHeader = () => (
-    <>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          Homepage
-        </Text>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchBar}>
+    <View style={styles.headerContainer}>
+      <View style={styles.searchContainer}>
+        <FontAwesome name="search" size={18} color={COLORS.gray} style={styles.searchIcon} />
         <TextInput
-          style={[styles.searchInput, { 
-            color: theme.text,
-            backgroundColor: theme.inputBackground,
-            borderRadius: 10,
-            paddingHorizontal: 15
-          }]}
-          placeholder="Search"
-          placeholderTextColor={theme.textSecondary}
+          style={styles.searchInput}
+          placeholder="Search characters..."
+          placeholderTextColor={COLORS.gray}
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={text => setSearchQuery(text)}
         />
-        <TouchableOpacity 
-          style={[styles.searchIconContainer, { backgroundColor: theme.secondary }]}
-          onPress={() => {/* Open search modal */}}
-        >
-          <FontAwesome name="search" size={22} color={theme.text} />
-        </TouchableOpacity>
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <FontAwesome name="times-circle" size={18} color={COLORS.gray} />
+          </TouchableOpacity>
+        )}
       </View>
-
-      {/* Categories */}
-      <View style={[styles.categoriesContainer, {
-        borderColor: theme.border,
-        backgroundColor: theme.isDark ? theme.card : 'transparent'
-      }]}>
+      
+      <View style={styles.categoriesContainer}>
         <FlatList
           horizontal
-          showsHorizontalScrollIndicator={false}
           data={CATEGORIES}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.categoriesContent}
+          showsHorizontalScrollIndicator={false}
           renderItem={({ item }) => (
             <TouchableOpacity
-              key={item.id}
               style={[
-                styles.categoryTab,
-                {
-                  backgroundColor: selectedCategory === item.id 
-                    ? theme.primary 
-                    : theme.isDark ? theme.secondary : '#f0f0f0',
-                  borderWidth: theme.isDark ? 1 : 0,
-                  borderColor: theme.border
-                },
-                selectedCategory === item.id && styles.categoryTabSelected
+                styles.categoryItem,
+                selectedCategory === item.id && styles.selectedCategoryItem,
               ]}
               onPress={() => setSelectedCategory(item.id)}
             >
               <Text
                 style={[
                   styles.categoryText,
-                  {
-                    color: selectedCategory === item.id 
-                      ? theme.actionButtonText 
-                      : theme.text
-                  },
-                  selectedCategory === item.id && styles.categoryTextSelected
+                  selectedCategory === item.id && styles.selectedCategoryText,
                 ]}
               >
                 {item.name}
               </Text>
             </TouchableOpacity>
           )}
+          contentContainerStyle={styles.categoriesList}
         />
       </View>
-    </>
-  );
-
-  // Render empty component
-  const renderEmptyComponent = () => (
-    <View style={styles.emptyContainer}>
-      <FontAwesome name="search" size={50} color={theme.textSecondary} />
-      <Text style={[styles.emptyText, { color: theme.text }]}>No characters found</Text>
-      <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>Try a different category</Text>
+      
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>
+          {selectedCategory === 'for_you' ? 'Characters For You' : `${selectedCategory} Characters`}
+        </Text>
+        <TouchableOpacity>
+          <Text style={styles.seeAllText}>See All</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
-      
-      {/* Use FlatList as the main scrollable component */}
-      <FlatList
-        data={filteredCharacters}
-        renderItem={renderCharacterItem}
-        keyExtractor={item => item.id.toString()}
-        numColumns={2}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmptyComponent}
-        contentContainerStyle={styles.characterGridContent}
-        columnWrapperStyle={styles.characterRow}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.primary}
-          />
-        }
-      />
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <FontAwesome name="search" size={50} color={COLORS.gray} />
+      <Text style={styles.emptyText}>No characters found</Text>
+      <Text style={styles.emptySubtext}>
+        Try adjusting your search or browse a different category
+      </Text>
+    </View>
+  );
 
-      {/* Create Character Button (floating) */}
-      <TouchableOpacity 
-        style={[styles.createButton, { 
-          backgroundColor: theme.actionButton,
-          shadowColor: theme.shadow
-        }]}
-        onPress={() => {/* Navigate to character creation */}}
+  // Add star twinkling effect
+  const renderStars = () => {
+    const stars = [];
+    for (let i = 0; i < 30; i++) {
+      const size = Math.random() * 3 + 1;
+      stars.push(
+        <View
+          key={`star-${i}`}
+          style={{
+            position: 'absolute',
+            width: size,
+            height: size,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderRadius: size / 2,
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            opacity: Math.random() * 0.5 + 0.25,
+          }}
+        />
+      );
+    }
+    return stars;
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      <ImageBackground 
+        source={{ uri: BACKGROUND_IMAGES.alternate }}
+        style={styles.backgroundImage}
       >
-        <FontAwesome name="plus" size={24} color={theme.actionButtonText} />
-      </TouchableOpacity>
+        <View style={styles.starsContainer}>
+          {renderStars()}
+        </View>
+        
+        <LinearGradient
+          colors={GRADIENTS.main.colors}
+          start={GRADIENTS.main.start}
+          end={GRADIENTS.main.end}
+          style={styles.gradient}
+        />
+        
+        <View style={styles.title}>
+          <Text style={styles.titleText}>Explore</Text>
+        </View>
+        
+        <FlatList
+          data={filteredCharacters}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderCharacterItem}
+          contentContainerStyle={styles.charactersContainer}
+          showsVerticalScrollIndicator={false}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={renderEmptyComponent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.white}
+              colors={[COLORS.primary, COLORS.secondary]}
+            />
+          }
+        />
+      </ImageBackground>
     </SafeAreaView>
   );
 };
@@ -313,190 +395,208 @@ const ExploreScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  starsContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    zIndex: 0,
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  title: {
     paddingTop: 20,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    zIndex: 10,
+  },
+  titleText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  headerContainer: {
+    paddingHorizontal: 20,
     paddingBottom: 10,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  searchBar: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: COLORS.inputRadius,
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    marginVertical: 10,
+    height: 50,
+    ...SHADOWS.medium,
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    padding: 10,
-    marginRight: 10,
-    height: 44,
-  },
-  searchIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: '100%',
+    color: COLORS.textDark,
+    fontSize: 16,
   },
   categoriesContainer: {
-    marginTop: 8,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    paddingBottom: 12,
-    paddingTop: 6,
-    borderRadius: 8,
-    marginHorizontal: 15,
-  },
-  categoriesContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  categoryTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginTop: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
-    marginHorizontal: 5,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    padding: 5,
   },
-  categoryTabSelected: {
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+  categoriesList: {
+    paddingHorizontal: 10,
+  },
+  categoryItem: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginHorizontal: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  selectedCategoryItem: {
+    backgroundColor: COLORS.primary,
   },
   categoryText: {
-    fontSize: 14,
-    fontWeight: '500',
+    color: COLORS.textDark,
+    fontWeight: '600',
   },
-  categoryTextSelected: {
-    fontWeight: '700',
+  selectedCategoryText: {
+    color: COLORS.white,
   },
-  characterGridContent: {
-    paddingHorizontal: 10,
-    paddingBottom: 80, // Space for floating button
-  },
-  characterRow: {
+  sectionHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  seeAllText: {
+    color: COLORS.white,
+    opacity: 0.9,
+  },
+  charactersContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   characterCard: {
-    width: itemWidth,
-    borderRadius: 12,
+    borderRadius: COLORS.cardRadius,
+    marginBottom: 20,
     overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    ...SHADOWS.medium,
+  },
+  cardGradient: {
+    borderRadius: COLORS.cardRadius,
+    padding: 15,
+  },
+  characterContent: {
+    flexDirection: 'row',
   },
   characterImageContainer: {
-    width: '100%',
-    height: 180,
-    position: 'relative',
+    marginRight: 15,
   },
   characterImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
-  placeholderImage: {
-    width: '100%',
-    height: '100%',
+  characterImagePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  characterInitial: {
-    fontSize: 40,
+  characterImagePlaceholderText: {
+    fontSize: 30,
     fontWeight: 'bold',
+    color: COLORS.white,
   },
-  characterStatsContainer: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  characterStats: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  characterInfo: {
-    padding: 12,
+  characterDetails: {
+    flex: 1,
   },
   characterName: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: COLORS.textDark,
+    marginBottom: 5,
   },
   characterDescription: {
     fontSize: 14,
+    color: COLORS.textMuted,
     marginBottom: 10,
   },
   tagsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
-  tagChip: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    marginRight: 6,
-    marginBottom: 6,
+  tagPill: {
+    backgroundColor: 'rgba(90, 102, 232, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    marginRight: 8,
   },
   tagText: {
     fontSize: 12,
+    color: COLORS.primary,
   },
-  moreTagsContainer: {
-    justifyContent: 'center',
-    paddingHorizontal: 6,
+  characterStats: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
   },
-  moreTagsText: {
-    fontSize: 12,
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 15,
+  },
+  statText: {
+    marginLeft: 5,
+    fontSize: 14,
+    color: COLORS.textDark,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 80,
-    paddingBottom: 80,
+    paddingVertical: 50,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: COLORS.white,
     marginTop: 20,
-    marginBottom: 8,
   },
-  emptySubText: {
+  emptySubtext: {
     fontSize: 14,
-  },
-  createButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 40,
   },
 });
 

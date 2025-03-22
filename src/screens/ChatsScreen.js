@@ -1,257 +1,463 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   StyleSheet,
+  Image,
+  FlatList,
   TextInput,
+  StatusBar,
+  SafeAreaView,
+  ImageBackground,
+  Animated,
+  RefreshControl,
 } from 'react-native';
-import { useTheme } from '../context/ThemeContext';
 import { FontAwesome } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS, GRADIENTS, SHADOWS, BACKGROUND_IMAGES } from '../constants/theme';
 
-// Helper function to get avatar color based on character ID
-const getAvatarColor = (id, theme) => {
+// Helper function to get character background colors
+const getCharacterBackgroundColor = (id) => {
   const colors = [
-    theme.primary,
-    theme.accent,
-    theme.secondary,
-    theme.success,
-    theme.warning
+    COLORS.primary,
+    COLORS.accent,
+    COLORS.secondary,
+    COLORS.accentSecondary,
+    COLORS.primaryLight
   ];
   return colors[id % colors.length];
 };
 
-// Mock chat data
-const CHATS = [
-  { 
-    id: 2, 
-    character: 'Marie Curie', 
-    avatar: null,
-    lastMessage: 'The discovery of radium was one of the most exciting moments in my research.',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).getTime(), // 2 hours ago
+// Mock data for chat list
+const CHAT_LIST = [
+  {
+    id: '1',
+    name: 'Marie Curie',
+    lastMessage: 'The discovery of radium was just the beginning...',
+    time: '10:42 AM',
     unread: 2,
+    image: null,
   },
-  { 
-    id: 3, 
-    character: 'Captain Picard', 
-    avatar: null,
-    lastMessage: 'Make it so. The Enterprise will be ready for our next mission.',
-    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).getTime(), // 5 hours ago
+  {
+    id: '2',
+    name: 'Albert Einstein',
+    lastMessage: 'Imagination is more important than knowledge',
+    time: 'Yesterday',
     unread: 0,
+    image: null,
   },
-  { 
-    id: 1, 
-    character: 'Gandalf', 
-    avatar: null,
-    lastMessage: 'A wizard is never late, nor is he early. He arrives precisely when he means to.',
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).getTime(), // 8 hours ago
-    unread: 1,
+  {
+    id: '3',
+    name: 'Sherlock Holmes',
+    lastMessage: 'Elementary, my dear Watson!',
+    time: 'Yesterday',
+    unread: 5,
+    image: null,
   },
-  { 
-    id: 4, 
-    character: 'Tony Stark', 
-    avatar: null,
-    lastMessage: 'I am Iron Man. The suit and I are one. Also, have you tried shawarma?',
-    timestamp: new Date(Date.now() - 25 * 60 * 60 * 1000).getTime(), // Yesterday
+  {
+    id: '4',
+    name: 'Gandalf',
+    lastMessage: 'A wizard is never late, nor is he early.',
+    time: 'Monday',
     unread: 0,
+    image: null,
   },
-  { 
-    id: 5, 
-    character: 'Jane Austen', 
-    avatar: null,
-    lastMessage: 'It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.',
-    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).getTime(), // 2 days ago
+  {
+    id: '5',
+    name: 'Wonder Woman',
+    lastMessage: 'Peace is a responsibility. Fighting ensures peace.',
+    time: 'Sunday',
     unread: 0,
+    image: null,
+  },
+  {
+    id: '6',
+    name: 'Tony Stark',
+    lastMessage: 'Sometimes you gotta run before you can walk',
+    time: 'Last Week',
+    unread: 0,
+    image: null,
   },
 ];
 
 const ChatsScreen = ({ navigation }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  const [chats, setChats] = useState(CHAT_LIST);
+  const [refreshing, setRefreshing] = useState(false);
   
-  // Format timestamp to readable string
-  const formatTimestamp = (timestamp) => {
-    const now = new Date();
-    const messageDate = new Date(timestamp);
-    const diffHours = Math.floor((now - messageDate) / (1000 * 60 * 60));
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    // Start animations when the component mounts
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(headerFadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ]).start();
     
-    if (diffHours < 24) {
-      if (diffHours < 1) {
-        return 'Just now';
-      }
-      return `${diffHours}h ago`;
-    } else if (diffHours < 48) {
-      return 'Yesterday';
+    // Filter chats based on search query
+    if (searchQuery.trim() !== '') {
+      const filteredChats = CHAT_LIST.filter(chat => 
+        chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        chat.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setChats(filteredChats);
     } else {
-      return messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      setChats(CHAT_LIST);
     }
+  }, [searchQuery]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Simulate refresh
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  };
+  
+  // Add star twinkling effect
+  const renderStars = () => {
+    const stars = [];
+    for (let i = 0; i < 30; i++) {
+      const size = Math.random() * 3 + 1;
+      stars.push(
+        <View
+          key={`star-${i}`}
+          style={{
+            position: 'absolute',
+            width: size,
+            height: size,
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderRadius: size / 2,
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            opacity: Math.random() * 0.5 + 0.25,
+          }}
+        />
+      );
+    }
+    return stars;
   };
 
-  // Filter chats based on search query
-  const filteredChats = CHATS.filter(chat => 
-    chat.character.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent
-
-  const renderChatItem = ({ item }) => (
-    <TouchableOpacity 
-      style={[styles.chatItem, { borderBottomColor: theme.border }]}
-      onPress={() => navigation.navigate('ChatDetail', { characterId: item.id })}
-    >
-      <View style={[styles.avatar, { backgroundColor: getAvatarColor(item.id, theme) }]}>
-        <Text style={[styles.avatarText, { color: theme.actionButtonText }]}>{item.character[0]}</Text>
-        {item.unread > 0 && (
-          <View style={[styles.unreadBadge, { 
-            backgroundColor: theme.notification,
-            borderColor: theme.background
-          }]}>
-            <Text style={[styles.unreadText, { color: theme.actionButtonText }]}>{item.unread}</Text>
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.chatContent}>
-        <View style={styles.chatHeader}>
-          <Text style={[styles.characterName, { color: theme.text }]}>{item.character}</Text>
-          <Text style={[styles.timestamp, { color: theme.textSecondary }]}>{formatTimestamp(item.timestamp)}</Text>
-        </View>
-        <Text 
-          style={[
-            styles.lastMessage, 
-            { color: theme.textSecondary },
-            item.unread > 0 && [styles.unreadMessage, { color: theme.text }]
-          ]} 
-          numberOfLines={2}
+  const renderChatItem = ({ item, index }) => {
+    const delay = index * 100;
+    const itemFadeAnim = useRef(new Animated.Value(0)).current;
+    const itemSlideAnim = useRef(new Animated.Value(20)).current;
+    
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(itemFadeAnim, {
+          toValue: 1,
+          duration: 500,
+          delay,
+          useNativeDriver: true,
+        }),
+        Animated.timing(itemSlideAnim, {
+          toValue: 0,
+          duration: 500,
+          delay,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+    
+    return (
+      <Animated.View 
+        style={{ 
+          opacity: itemFadeAnim,
+          transform: [{ translateY: itemSlideAnim }]
+        }}
+      >
+        <TouchableOpacity 
+          style={styles.chatItem}
+          onPress={() => navigation.navigate('ChatDetail', { chatId: item.id, name: item.name })}
         >
-          {item.lastMessage}
-        </Text>
-      </View>
-    </TouchableOpacity>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0.6)']}
+            style={styles.chatItemGradient}
+          >
+            <View style={styles.chatItemContent}>
+              <View style={styles.avatarContainer}>
+                {item.image ? (
+                  <Image source={{ uri: item.image }} style={styles.avatar} />
+                ) : (
+                  <View 
+                    style={[
+                      styles.avatarPlaceholder,
+                      { backgroundColor: getCharacterBackgroundColor(parseInt(item.id)) }
+                    ]}
+                  >
+                    <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+                  </View>
+                )}
+                {item.unread > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{item.unread}</Text>
+                  </View>
+                )}
+              </View>
+              
+              <View style={styles.chatInfo}>
+                <View style={styles.chatHeader}>
+                  <Text style={styles.chatName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.chatTime}>{item.time}</Text>
+                </View>
+                
+                <Text 
+                  style={[
+                    styles.lastMessage,
+                    item.unread > 0 && styles.unreadMessage
+                  ]} 
+                  numberOfLines={1}
+                >
+                  {item.lastMessage}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderEmptyList = () => (
+    <View style={styles.emptyContainer}>
+      <FontAwesome name="comments-o" size={60} color="rgba(255,255,255,0.7)" />
+      <Text style={styles.emptyText}>No chats found</Text>
+      <Text style={styles.emptySubtext}>
+        Start a new conversation with a character
+      </Text>
+      <TouchableOpacity 
+        style={styles.emptyButton}
+        onPress={() => navigation.navigate('Explore')}
+      >
+        <LinearGradient
+          colors={[COLORS.primary, COLORS.accent]}
+          start={[0, 0]}
+          end={[1, 1]}
+          style={styles.emptyButtonGradient}
+        >
+          <Text style={styles.emptyButtonText}>Explore Characters</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.background }]}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Chats</Text>
-      </View>
-
-      {/* Search bar */}
-      <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: theme.inputBackground }]}>
-          <FontAwesome name="search" size={18} color={theme.textSecondary} />
-          <TextInput
-            style={[styles.searchInput, { color: theme.text }]}
-            placeholder="Search conversations..."
-            placeholderTextColor={theme.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <FontAwesome name="times-circle" size={18} color={theme.textSecondary} />
-            </TouchableOpacity>
-          ) : null}
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      
+      <ImageBackground
+        source={{ uri: BACKGROUND_IMAGES.alternate }}
+        style={styles.backgroundImage}
+      >
+        <View style={styles.starsContainer}>
+          {renderStars()}
         </View>
-      </View>
-
-      {/* Chat list */}
-      <FlatList
-        data={filteredChats}
-        renderItem={renderChatItem}
-        keyExtractor={item => item.id.toString()}
-        contentContainerStyle={styles.chatList}
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <FontAwesome name="comments" size={50} color={theme.textSecondary} />
-            <Text style={[styles.emptyText, { color: theme.text }]}>No conversations yet</Text>
-            <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>
-              Start chatting with AI characters in the Explore tab
-            </Text>
-            <TouchableOpacity 
-              style={[styles.exploreButton, { backgroundColor: theme.primary }]}
-              onPress={() => navigation.navigate('Explore')}
-            >
-              <Text style={[styles.exploreButtonText, { color: theme.actionButtonText }]}>
-                Explore Characters
-              </Text>
-            </TouchableOpacity>
+        
+        <LinearGradient
+          colors={GRADIENTS.main.colors}
+          start={GRADIENTS.main.start}
+          end={GRADIENTS.main.end}
+          style={styles.gradient}
+        />
+        
+        <Animated.View 
+          style={{
+            opacity: headerFadeAnim,
+            zIndex: 10,
+          }}
+        >
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Chats</Text>
           </View>
-        )}
-      />
-    </View>
+          
+          <View style={styles.searchContainer}>
+            <FontAwesome name="search" size={18} color={COLORS.gray} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search chats..."
+              placeholderTextColor={COLORS.gray}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <FontAwesome name="times-circle" size={18} color={COLORS.gray} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </Animated.View>
+        
+        <FlatList
+          data={chats}
+          renderItem={renderChatItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.chatsList}
+          ListEmptyComponent={renderEmptyList}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.white}
+              colors={[COLORS.primary, COLORS.secondary]}
+            />
+          }
+        />
+        
+        <TouchableOpacity
+          style={styles.newChatButton}
+          onPress={() => navigation.navigate('Explore')}
+        >
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.secondary]}
+            start={[0, 0]}
+            end={[1, 1]}
+            style={styles.newChatButtonGradient}
+          >
+            <FontAwesome name="plus" size={24} color={COLORS.white} />
+          </LinearGradient>
+        </TouchableOpacity>
+      </ImageBackground>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  starsContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    zIndex: 0,
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   header: {
-    padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
+    paddingHorizontal: 20,
     paddingBottom: 15,
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
+    color: COLORS.white,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: COLORS.inputRadius,
+    marginHorizontal: 20,
+    marginBottom: 20,
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    height: 50,
+    ...SHADOWS.medium,
+  },
+  searchIcon: {
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    height: 40,
-    marginLeft: 10,
+    height: '100%',
+    color: COLORS.textDark,
     fontSize: 16,
   },
-  chatList: {
+  chatsList: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 90,
   },
   chatItem: {
+    borderRadius: COLORS.cardRadius,
+    marginBottom: 15,
+    overflow: 'hidden',
+    ...SHADOWS.medium,
+  },
+  chatItemGradient: {
+    borderRadius: COLORS.cardRadius,
+    padding: 15,
+  },
+  chatItemContent: {
     flexDirection: 'row',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 15,
   },
   avatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
+  },
+  avatarPlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
   avatarText: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: COLORS.white,
   },
   unreadBadge: {
     position: 'absolute',
-    top: 0,
     right: 0,
+    top: 0,
+    backgroundColor: COLORS.accent,
     width: 22,
     height: 22,
     borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
+    borderColor: COLORS.white,
   },
-  unreadText: {
+  unreadBadgeText: {
+    color: COLORS.white,
     fontSize: 12,
     fontWeight: 'bold',
   },
-  chatContent: {
+  chatInfo: {
     flex: 1,
-    justifyContent: 'center',
   },
   chatHeader: {
     flexDirection: 'row',
@@ -259,45 +465,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 5,
   },
-  characterName: {
-    fontSize: 18,
+  chatName: {
+    fontSize: 17,
     fontWeight: 'bold',
+    color: COLORS.textDark,
+    flex: 1,
   },
-  timestamp: {
-    fontSize: 14,
+  chatTime: {
+    fontSize: 12,
+    color: COLORS.textMuted,
   },
   lastMessage: {
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 14,
+    color: COLORS.textMuted,
   },
   unreadMessage: {
-    fontWeight: '500',
+    color: COLORS.textDark,
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    padding: 40,
+    marginTop: 40,
   },
   emptyText: {
+    marginTop: 20,
     fontSize: 20,
     fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 10,
+    color: COLORS.white,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  emptySubText: {
+  emptySubtext: {
+    marginTop: 10,
     fontSize: 16,
+    color: COLORS.white,
+    opacity: 0.8,
     textAlign: 'center',
     marginBottom: 30,
   },
-  exploreButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
+  emptyButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    ...SHADOWS.medium,
   },
-  exploreButtonText: {
+  emptyButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 25,
+  },
+  emptyButtonText: {
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  newChatButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+    ...SHADOWS.large,
+  },
+  newChatButtonGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
