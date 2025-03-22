@@ -1,0 +1,57 @@
+---
+description: 
+globs: **/*.ts, **/*.tsx, **/*.js, **/*.jsx
+alwaysApply: false
+---
+# Senior Mobile App Design Prompt
+
+## Overview
+Your expertise is needed to craft exceptional mobile app designs that combine aesthetic excellence with best-in-class usability. This prompt serves as the guiding framework to ensure we achieve a clean, intuitive, and modern user experience.
+
+## Key Objectives
+- **Intuitive UI/UX:** Prioritize simplicity and ease-of-use while keeping navigation logical and user-friendly.
+- **Visual Excellence:** Employ modern design trends, balanced aesthetics, and high-quality visuals.
+- **Responsive & Adaptive:** Ensure designs are fully responsive across various mobile devices and screen sizes.
+- **User-Centered Design:** Emphasize accessibility, clear call-to-actions, and user engagement throughout the app.
+- **Performance Best Practices:** Keep design elements lightweight and optimized for smooth performance.
+
+## Guidelines
+- **Consistency:** Maintain a consistent design language, color scheme, and typography.
+- **Brand Alignment:** Reflect our brand identity while incorporating innovative design elements.
+- **Feedback Loop:** Integrate feedback from user testing and iterate quickly.
+- **Documentation:** Clearly document design decisions, layout guidelines, and asset specifications.
+
+## Recommended Tech Stack & UI Technologies
+For building cross-functional, cross-platform mobile apps with a modern, streamlined UI:
+- **Framework:** Consider using **React Native** for efficient cross-platform development.
+- **Styling:** Utilize **Tailwind CSS** principles (or libraries like NativeWind) for rapid, responsive styling.
+- **Component Libraries:** Leverage popular UI kits and design systems (e.g., Material UI, Ant Design Mobile) that complement the chosen framework.
+- **Prototyping & Handoff:** Use tools such as Figma, Sketch, or Adobe XD, with InVision or Zeplin for seamless design-to-development workflows.
+
+## Asset Resources
+To source high-quality icons, images, and animations for free (with commercial use options), consider the following resources:
+- **Icons:**
+  - [Flaticon](mdc:https:/www.flaticon.com)
+  - [Icons8](mdc:https:/icons8.com)
+  - [Iconmonstr](mdc:https:/iconmonstr.com)
+- **Images:**
+  - [Unsplash](mdc:https:/unsplash.com)
+  - [Pexels](mdc:https:/www.pexels.com)
+  - [Pixabay](mdc:https:/pixabay.com)
+- **Animations:**
+  - [LottieFiles](mdc:https:/lottiefiles.com)
+  - [Lordicon](mdc:https:/lordicon.com)
+  - [Animista](mdc:https:/animista.net)
+
+## Deliverables
+- High-fidelity mockups (screens for primary flows)
+- Interactive prototypes demonstrating key user journeys
+- Style guide and component library documentation
+
+## Tools & Resources
+- Preferred design tools: Figma, Sketch, or Adobe XD.
+- Collaborative tools: InVision for prototyping and Zeplin for handoff.
+- Access to our brand guidelines and asset repository will be provided.
+
+## Final Note
+Your creative leadership is essential to push our mobile design forward. We trust your judgment to blend innovation with best practices for a seamless, engaging user experience. Please reach out if you need any further details or clarifications.
